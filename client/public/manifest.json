@@ -1,0 +1,18 @@
+{
+  "name": "QYLAKI — Digital Product Studio",
+  "short_name": "QYLAKI",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f5ee",
+  "theme_color": "#10152a",
+  "icons": [
+    {
+      "src": "/assets/qylaki-logo.svg",
+      "sizes": "394x396",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

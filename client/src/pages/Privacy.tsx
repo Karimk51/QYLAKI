@@ -1,0 +1,8 @@
+import SiteLayout from "../components/SiteLayout";
+import { useTheme } from "../contexts/ThemeContext";
+
+export default function Privacy() {
+  const { language } = useTheme();
+  const ar = language === "ar";
+  return <SiteLayout><div className="inner-page legal-page page-container"><section className="page-hero"><p className="kicker">{ar ? "الخصوصية" : "Privacy"}</p><h1>{ar ? <>نحترم<br/><em>بياناتك.</em></> : <>Your data.<br/><em>Handled with care.</em></>}</h1><p className="lead">{ar ? "نستخدم المعلومات التي ترسلها فقط لفهم مشروعك والرد عليك وتحسين الخدمة." : "We use the information you send only to understand your project, reply to you, and improve the service."}</p></section><article className="legal-card"><h2>{ar ? "ما الذي نجمعه؟" : "What we collect"}</h2><p>{ar ? "قد نجمع الاسم والبريد الإلكتروني ورقم الهاتف وتفاصيل المشروع التي تختار إرسالها عبر نماذج التواصل أو بدء المشروع." : "We may collect your name, email, phone number, and project details that you choose to send through our contact or project forms."}</p><h2>{ar ? "كيف نستخدم البيانات؟" : "How we use it"}</h2><p>{ar ? "نستخدمها للرد على طلبك، تقدير نطاق المشروع، وتنظيم التواصل المتعلق بالخدمة. لا نبيع بياناتك ولا نشاركها لأغراض تسويقية غير مرتبطة بطلبك." : "We use it to reply to your request, estimate project scope, and manage service-related communication. We do not sell your data or share it for unrelated marketing."}</p><h2>{ar ? "تواصل معنا" : "Contact"}</h2><p>{ar ? "لأي سؤال متعلق بالخصوصية، راسلنا عبر qyalki67@gmail.com." : "For privacy questions, contact us at qyalki67@gmail.com."}</p></article></div></SiteLayout>;
+}

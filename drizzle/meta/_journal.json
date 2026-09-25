@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1789929504833,
+      "tag": "0000_complete_shen",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1789932345024,
+      "tag": "0001_sour_johnny_blaze",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1789949193068,
+      "tag": "0002_red_sharon_ventura",
+      "breakpoints": true
+    }
+  ]
+}

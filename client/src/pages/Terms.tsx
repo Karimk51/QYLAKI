@@ -1,0 +1,8 @@
+import SiteLayout from "../components/SiteLayout";
+import { useTheme } from "../contexts/ThemeContext";
+
+export default function Terms() {
+  const { language } = useTheme();
+  const ar = language === "ar";
+  return <SiteLayout><div className="inner-page legal-page page-container"><section className="page-hero"><p className="kicker">{ar ? "الشروط" : "Terms"}</p><h1>{ar ? <>اتفاق<br/><em>واضح.</em></> : <>A clear<br/><em>agreement.</em></>}</h1><p className="lead">{ar ? "باستخدام الموقع، توافق على استخدامه للتواصل وطلب الخدمات بطريقة قانونية وواضحة." : "By using this site, you agree to use it lawfully and clearly for communication and service requests."}</p></section><article className="legal-card"><h2>{ar ? "طبيعة المحتوى" : "About the content"}</h2><p>{ar ? "المحتوى والأعمال المعروضة توضيحية ما لم يُذكر خلاف ذلك. أي نتائج أو أرقام يجب تأكيدها مع العميل قبل استخدامها تسويقيًا." : "Content and work shown are illustrative unless stated otherwise. Any results or figures should be confirmed with the client before being used in marketing."}</p><h2>{ar ? "طلبات المشاريع" : "Project requests"}</h2><p>{ar ? "إرسال النموذج لا يعني قبول المشروع أو تثبيت السعر. يتم تأكيد النطاق والمدة والتكلفة بعد مراجعة التفاصيل والتواصل معك." : "Submitting a form does not mean that a project is accepted or that a price is fixed. Scope, timing, and cost are confirmed after reviewing the details with you."}</p><h2>{ar ? "التواصل" : "Communication"}</h2><p>{ar ? "نحاول الرد خلال يوم عمل، لكن ذلك لا يمثل التزامًا زمنيًا ثابتًا." : "We aim to reply within one business day, but this is not a fixed time guarantee."}</p></article></div></SiteLayout>;
+}
