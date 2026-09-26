@@ -2,8 +2,6 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
-import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -14,8 +12,19 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  registerStorageProxy(app);
-  registerOAuthRoutes(app);
+  const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+  app.use("/api/trpc", (req, res, next) => {
+    const now = Date.now(); const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const route = String(req.query.batch || req.query.path || "api");
+    const isAuth = route.includes("auth.login") || route.includes("auth.signup");
+    const isAi = route.includes("ai.chat"); const limit = isAuth ? 12 : isAi ? 20 : 60; const key = `${ip}:${isAuth ? "auth" : isAi ? "ai" : "api"}`;
+    const bucket = rateBuckets.get(key);
+    if (!bucket || bucket.resetAt <= now) rateBuckets.set(key, { count: 1, resetAt: now + 60_000 });
+    else if (bucket.count >= limit) { res.status(429).json({ error: "Too many requests. Please try again shortly." }); return; }
+    else bucket.count += 1;
+    if (rateBuckets.size > 5000) for (const [entry, value] of Array.from(rateBuckets.entries())) if (value.resetAt <= now) rateBuckets.delete(entry);
+    next();
+  });
   // tRPC API
   app.use(
     "/api/trpc",

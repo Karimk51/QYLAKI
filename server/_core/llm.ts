@@ -213,15 +213,16 @@ const normalizeToolChoice = (
 };
 
 const resolveApiUrl = () => {
-  if (!ENV.forgeApiUrl || !ENV.forgeApiUrl.trim()) {
-    throw new Error("BUILT_IN_FORGE_API_URL is not configured; AI assistant is unavailable");
+  if (!ENV.llmApiUrl || !ENV.llmApiUrl.trim()) {
+    throw new Error("OPENAI_API_BASE is not configured; AI assistant is unavailable");
   }
-  return `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
+  const base = ENV.llmApiUrl.replace(/\/$/, "");
+  return base.endsWith("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
 };
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
+  if (!ENV.llmApiKey) {
+    throw new Error("OPENAI_API_KEY is not configured");
   }
 };
 
@@ -407,7 +408,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${ENV.llmApiKey}`,
     },
     body: JSON.stringify(payload),
   });
@@ -419,7 +420,11 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     );
   }
 
-  return (await response.json()) as InvokeResult;
+  const result = (await response.json()) as Partial<InvokeResult> & { error?: { message?: string } };
+  if (!result.choices || !Array.isArray(result.choices) || !result.choices[0]) {
+    throw new Error(result.error?.message || "AI provider returned an invalid response");
+  }
+  return result as InvokeResult;
 }
 
 export type ModelInfo = {
@@ -437,13 +442,14 @@ export type ModelsResponse = {
 export async function listLLMModels(): Promise<ModelsResponse> {
   assertApiKey();
 
-  if (!ENV.forgeApiUrl || !ENV.forgeApiUrl.trim()) {
-    throw new Error("BUILT_IN_FORGE_API_URL is not configured; model listing is unavailable");
+  if (!ENV.llmApiUrl || !ENV.llmApiUrl.trim()) {
+    throw new Error("OPENAI_API_BASE is not configured; model listing is unavailable");
   }
-  const url = `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`;
+  const base = ENV.llmApiUrl.replace(/\/$/, "");
+  const url = base.endsWith("/v1") ? `${base}/models` : `${base}/v1/models`;
 
   const response = await fetchWithBackoff(url, {
-    headers: { authorization: `Bearer ${ENV.forgeApiKey}` },
+    headers: { authorization: `Bearer ${ENV.llmApiKey}` },
   });
 
   if (!response.ok) {
