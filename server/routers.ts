@@ -32,20 +32,35 @@ export function validateBookingRequest(input: z.infer<typeof bookingInput>) {
 
 const chatInput = z.object({ messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().trim().min(1).max(3000) })).min(1).max(12), language: z.enum(["ar", "en", "fr"]).default("ar") });
 
+const publicUser = (user: NonNullable<import("./_core/context").TrpcContext["user"]>) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  createdAt: user.createdAt,
+});
+
 export const appRouter = router({
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(opts => opts.ctx.user ? publicUser(opts.ctx.user) : null),
     signup: publicProcedure.input(signupInput).mutation(async ({ input, ctx }) => {
-      const email = input.email.toLowerCase();
+      const email = input.email.trim().toLowerCase();
       if (await getUserByEmail(email)) throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists" });
-      const user = await createLocalUser({ openId: `local_${nanoid(24)}`, name: input.name, email, passwordHash: await hashPassword(input.password) });
-      const token = await sdk.createSessionToken(user.openId, { name: user.name || input.name });
-      ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: 1000 * 60 * 60 * 24 * 30 });
-      return { user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+      try {
+        const user = await createLocalUser({ openId: `local_${nanoid(24)}`, name: input.name.trim(), email, passwordHash: await hashPassword(input.password) });
+        const token = await sdk.createSessionToken(user.openId, { name: user.name || input.name });
+        ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: 1000 * 60 * 60 * 24 * 30 });
+        return { user: { id: user.id, name: user.name, email: user.email, role: user.role } };
+      } catch (error) {
+        const message = String(error);
+        if (message.includes("EMAIL_ALREADY_EXISTS") || message.includes("Duplicate entry") || message.includes("ER_DUP_ENTRY")) throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists" });
+        console.error("[Auth] Signup failed:", error);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Account creation is temporarily unavailable. Check the database configuration." });
+      }
     }),
     login: publicProcedure.input(loginInput).mutation(async ({ input, ctx }) => {
-      const user = await getUserByEmail(input.email.toLowerCase());
-      if (!user || !(await verifyPassword(input.password, user.passwordHash))) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
+      const user = await getUserByEmail(input.email.trim().toLowerCase());
+      if (!user || !user.passwordHash || !(await verifyPassword(input.password, user.passwordHash))) throw new TRPCError({ code: "UNAUTHORIZED", message: "The email or password is incorrect" });
       const token = await sdk.createSessionToken(user.openId, { name: user.name || user.email || "QYLAKI user" });
       ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: 1000 * 60 * 60 * 24 * 30 });
       return { user: { id: user.id, name: user.name, email: user.email, role: user.role } };

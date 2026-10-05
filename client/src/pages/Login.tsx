@@ -16,9 +16,15 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const login = trpc.auth.login.useMutation({ onSuccess: () => navigate("/dashboard"), onError: e => setError(e.message) });
-  const signup = trpc.auth.signup.useMutation({ onSuccess: () => navigate("/dashboard"), onError: e => setError(e.message) });
+  const login = trpc.auth.login.useMutation({ onSuccess: () => navigate("/dashboard"), onError: e => setError(friendlyError(e.message)) });
+  const signup = trpc.auth.signup.useMutation({ onSuccess: () => navigate("/dashboard"), onError: e => setError(friendlyError(e.message)) });
   const pending = login.isPending || signup.isPending;
+  const friendlyError = (message: string) => {
+    if (message.includes("already exists")) return tx("هذا البريد الإلكتروني مستخدم بالفعل.", "This email is already registered.", "Cet e-mail est déjà utilisé.");
+    if (message.includes("incorrect") || message.includes("Invalid email")) return tx("البريد الإلكتروني أو كلمة المرور غير صحيحة.", "The email or password is incorrect.", "L’e-mail ou le mot de passe est incorrect.");
+    if (message.includes("temporarily unavailable") || message.includes("DATABASE")) return tx("الخدمة غير متاحة مؤقتاً. تأكد من إعداد قاعدة البيانات.", "The service is temporarily unavailable. Check the database configuration.", "Le service est temporairement indisponible. Vérifiez la base de données.");
+    return message;
+  };
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setError("");

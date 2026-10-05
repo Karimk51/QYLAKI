@@ -15,16 +15,9 @@ async function startServer() {
   const rateBuckets = new Map<string, { count: number; resetAt: number }>();
   app.use("/api/trpc", (req, res, next) => {
     const now = Date.now(); const ip = req.ip || req.socket.remoteAddress || "unknown";
-    // tRPC v11 sends procedure paths in the URL path itself (comma-joined when
-    // httpBatchLink batches several calls: /api/trpc/auth.me,dashboard.requests?batch=1),
-    // not in the query string. Read them from req.path (mount-relative, so it
-    // starts with "/") so auth and AI limits apply.
-    const routePaths = (typeof req.path === "string" ? req.path : "")
-      .split(",")
-      .map(segment => { try { return decodeURIComponent(segment.trim()).replace(/^\/+/, ""); } catch { return segment.trim().replace(/^\/+/, ""); } })
-      .filter(segment => segment.length > 0);
-    const isAuth = routePaths.some(route => route === "auth.login" || route === "auth.signup");
-    const isAi = routePaths.some(route => route === "ai.chat"); const limit = isAuth ? 12 : isAi ? 20 : 60; const key = `${ip}:${isAuth ? "auth" : isAi ? "ai" : "api"}`;
+    const route = String(req.query.batch || req.query.path || "api");
+    const isAuth = route.includes("auth.login") || route.includes("auth.signup");
+    const isAi = route.includes("ai.chat"); const limit = isAuth ? 12 : isAi ? 20 : 60; const key = `${ip}:${isAuth ? "auth" : isAi ? "ai" : "api"}`;
     const bucket = rateBuckets.get(key);
     if (!bucket || bucket.resetAt <= now) rateBuckets.set(key, { count: 1, resetAt: now + 60_000 });
     else if (bucket.count >= limit) { res.status(429).json({ error: "Too many requests. Please try again shortly." }); return; }
