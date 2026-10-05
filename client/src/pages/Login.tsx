@@ -22,7 +22,7 @@ export default function Login() {
   const friendlyError = (message: string) => {
     if (message.includes("already exists")) return tx("هذا البريد الإلكتروني مستخدم بالفعل.", "This email is already registered.", "Cet e-mail est déjà utilisé.");
     if (message.includes("incorrect") || message.includes("Invalid email")) return tx("البريد الإلكتروني أو كلمة المرور غير صحيحة.", "The email or password is incorrect.", "L’e-mail ou le mot de passe est incorrect.");
-    if (message.includes("temporarily unavailable") || message.includes("DATABASE")) return tx("الخدمة غير متاحة مؤقتاً. تأكد من إعداد قاعدة البيانات.", "The service is temporarily unavailable. Check the database configuration.", "Le service est temporairement indisponible. Vérifiez la base de données.");
+    if (message.includes("temporarily unavailable") || message.includes("DATABASE") || message.includes("Database setup is incomplete")) return tx("الخدمة غير متاحة مؤقتاً. تأكد من إعداد قاعدة البيانات.", "The service is temporarily unavailable. Check the database configuration.", "Le service est temporairement indisponible. Vérifiez la base de données.");
     return message;
   };
   const submit = (event: FormEvent) => {

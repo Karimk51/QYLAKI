@@ -1,11 +1,13 @@
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { sql } from "drizzle-orm";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Booking, ContactSubmission, InsertBooking, InsertContactSubmission, InsertUser, User } from "../drizzle/schema";
 import { bookings, contactSubmissions, users } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let authSchemaReady: Promise<void> | null = null;
 const localUsersFile = process.env.AUTH_DATA_FILE || path.join(process.cwd(), "server", "data", "users.json");
 
 type LocalUser = {
@@ -42,11 +44,40 @@ async function writeLocalUsers(value: LocalUser[]) {
   await writeFile(localUsersFile, JSON.stringify(value, null, 2), "utf8");
 }
 
+async function ensureAuthSchema(db: ReturnType<typeof drizzle>) {
+  // Self-hosted deployments often copy the project without running Drizzle migrations.
+  // These idempotent guards make local email/password auth start safely in that case.
+  await db.execute(sql`CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT NOT NULL,
+    openId VARCHAR(64) NOT NULL,
+    name TEXT NULL,
+    email VARCHAR(320) NULL,
+    passwordHash TEXT NULL,
+    loginMethod VARCHAR(64) NULL,
+    role ENUM('user','admin') NOT NULL DEFAULT 'user',
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    lastSignedIn TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT users_id PRIMARY KEY (id),
+    CONSTRAINT users_openId_unique UNIQUE (openId)
+  )`);
+  try { await db.execute(sql`ALTER TABLE users ADD COLUMN passwordHash TEXT NULL`); } catch (error) {
+    // MySQL reports a duplicate-column error when the migration was already applied.
+    if (!String(error).toLowerCase().includes("duplicate column") && !String(error).toLowerCase().includes("1060")) throw error;
+  }
+}
+
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
-    try { _db = drizzle(process.env.DATABASE_URL); }
-    catch (error) { console.warn("[Database] MySQL connection failed:", error); _db = null; }
+    try {
+      _db = drizzle(process.env.DATABASE_URL);
+      authSchemaReady = ensureAuthSchema(_db).catch(error => {
+        console.error("[Database] Auth schema setup failed:", error);
+        throw new Error("AUTH_SCHEMA_SETUP_FAILED");
+      });
+    } catch (error) { console.warn("[Database] MySQL connection failed:", error); _db = null; }
   }
+  if (_db && authSchemaReady) await authSchemaReady;
   return _db;
 }
 

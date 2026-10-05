@@ -45,7 +45,10 @@ export const appRouter = router({
     me: publicProcedure.query(opts => opts.ctx.user ? publicUser(opts.ctx.user) : null),
     signup: publicProcedure.input(signupInput).mutation(async ({ input, ctx }) => {
       const email = input.email.trim().toLowerCase();
-      if (await getUserByEmail(email)) throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists" });
+      let existing;
+      try { existing = await getUserByEmail(email); }
+      catch (error) { console.error("[Auth] Signup lookup failed:", error); throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database setup is incomplete. Please run the database migration or restart the server." }); }
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists" });
       try {
         const user = await createLocalUser({ openId: `local_${nanoid(24)}`, name: input.name.trim(), email, passwordHash: await hashPassword(input.password) });
         const token = await sdk.createSessionToken(user.openId, { name: user.name || input.name });
@@ -59,7 +62,9 @@ export const appRouter = router({
       }
     }),
     login: publicProcedure.input(loginInput).mutation(async ({ input, ctx }) => {
-      const user = await getUserByEmail(input.email.trim().toLowerCase());
+      let user;
+      try { user = await getUserByEmail(input.email.trim().toLowerCase()); }
+      catch (error) { console.error("[Auth] Login lookup failed:", error); throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database setup is incomplete. Please run the database migration or restart the server." }); }
       if (!user || !user.passwordHash || !(await verifyPassword(input.password, user.passwordHash))) throw new TRPCError({ code: "UNAUTHORIZED", message: "The email or password is incorrect" });
       const token = await sdk.createSessionToken(user.openId, { name: user.name || user.email || "QYLAKI user" });
       ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: 1000 * 60 * 60 * 24 * 30 });
